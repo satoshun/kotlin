@@ -11,6 +11,9 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.intrinsics.createCoroutineUnintercepted
 import kotlin.coroutines.resume
 
+/*
+ * TODO: think about continuation
+ */
 class ResolutionStageRunner(val components: InferenceComponents) {
     fun processCandidate(candidate: Candidate): CandidateApplicability {
         val sink = CheckerSinkImpl(components)

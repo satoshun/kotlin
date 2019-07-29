@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.*
-import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.fir.resolve.inference.returnExpressions
 import org.jetbrains.kotlin.fir.resolve.transformers.firUnsafe
 import org.jetbrains.kotlin.fir.resolve.withNullability
 import org.jetbrains.kotlin.fir.types.*
@@ -38,7 +38,15 @@ fun resolveArgumentExpression(
     typeProvider: (FirExpression) -> FirTypeRef?
 ) {
     return when (argument) {
-        is FirFunctionCall -> resolveSubCallArgument(csBuilder, argument, expectedType, sink, isReceiver, isSafeCall, typeProvider)
+        is FirFunctionCall, is FirCallLikeControlFlowExpression -> resolveSubCallArgument(
+            csBuilder,
+            argument as FirCalleeReferenceHolder,
+            expectedType,
+            sink,
+            isReceiver,
+            isSafeCall,
+            typeProvider
+        )
         is FirQualifiedAccessExpression -> resolvePlainExpressionArgument(
             csBuilder,
             argument,
@@ -65,26 +73,44 @@ fun resolveArgumentExpression(
             acceptLambdaAtoms,
             typeProvider
         )
+        is FirBlock -> resolveBlockArgument(csBuilder, argument, expectedType, expectedTypeRef, sink, isReceiver, isSafeCall, acceptLambdaAtoms, typeProvider)
         else -> resolvePlainExpressionArgument(csBuilder, argument, expectedType, sink, isReceiver, isSafeCall, typeProvider)
     }
 }
 
-fun resolveSubCallArgument(
+private fun resolveBlockArgument(
     csBuilder: ConstraintSystemBuilder,
-    argument: FirFunctionCall,
+    block: FirBlock,
+    expectedType: ConeKotlinType,
+    expectedTypeRef: FirTypeRef,
+    sink: CheckerSink,
+    isReceiver: Boolean,
+    isSafeCall: Boolean,
+    acceptLambdaAtoms: (PostponedResolvedAtomMarker) -> Unit,
+    typeProvider: (FirExpression) -> FirTypeRef?
+) {
+    val returnArguments = block.returnExpressions()
+    for (argument in returnArguments) {
+        resolveArgumentExpression(csBuilder, argument, expectedType, expectedTypeRef, sink, isReceiver, isSafeCall, acceptLambdaAtoms, typeProvider)
+    }
+}
+
+private fun resolveSubCallArgument(
+    csBuilder: ConstraintSystemBuilder,
+    argument: FirCalleeReferenceHolder,
     expectedType: ConeKotlinType,
     sink: CheckerSink,
     isReceiver: Boolean,
     isSafeCall: Boolean,
     typeProvider: (FirExpression) -> FirTypeRef?
 ) {
-    val candidate = argument.candidate() ?: return resolvePlainExpressionArgument(csBuilder, argument, expectedType, sink, isReceiver, isSafeCall, typeProvider)
+    val candidate = argument.candidate() ?: return resolvePlainExpressionArgument(csBuilder, argument as FirExpression, expectedType, sink, isReceiver, isSafeCall, typeProvider)
     val type = sink.components.returnTypeCalculator.tryCalculateReturnType(candidate.symbol.firUnsafe()).coneTypeUnsafe<ConeKotlinType>()
     val argumentType = candidate.substitutor.substituteOrSelf(type)
     resolvePlainArgumentType(csBuilder, argumentType, expectedType, sink, isReceiver, isSafeCall)
 }
 
-fun resolvePlainExpressionArgument(
+private fun resolvePlainExpressionArgument(
     csBuilder: ConstraintSystemBuilder,
     argument: FirExpression,
     expectedType: ConeKotlinType?,

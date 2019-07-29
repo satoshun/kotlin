@@ -5,26 +5,29 @@
 
 package org.jetbrains.kotlin.fir.resolve.transformers
 
-import org.jetbrains.kotlin.fir.*
+import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.copy
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirCallableMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
-import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
-import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
-import org.jetbrains.kotlin.fir.expressions.FirStatement
-import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
+import org.jetbrains.kotlin.fir.declarations.FirMemberFunction
+import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.references.FirResolvedCallableReferenceImpl
 import org.jetbrains.kotlin.fir.resolve.calls.FirNamedReferenceWithCandidate
+import org.jetbrains.kotlin.fir.resolve.calls.candidate
 import org.jetbrains.kotlin.fir.resolve.constructFunctionalTypeRef
+import org.jetbrains.kotlin.fir.resolve.inference.returnExpressions
 import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.resolve.substitution.substituteOrNull
 import org.jetbrains.kotlin.fir.scopes.impl.withReplacedConeType
-import org.jetbrains.kotlin.fir.types.*
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
+import org.jetbrains.kotlin.fir.types.coneTypeSafe
 import org.jetbrains.kotlin.fir.types.impl.ConeTypeParameterTypeImpl
 import org.jetbrains.kotlin.fir.types.impl.FirResolvedTypeRefImpl
 import org.jetbrains.kotlin.fir.types.impl.FirTypeProjectionWithVarianceImpl
 import org.jetbrains.kotlin.fir.visitors.CompositeTransformResult
-import org.jetbrains.kotlin.fir.visitors.FirTransformer
 import org.jetbrains.kotlin.fir.visitors.compose
 import org.jetbrains.kotlin.types.Variance
 
@@ -116,7 +119,7 @@ class FirCallCompletionResultsWriterTransformer(
 
         val resultType = typeRef.withReplacedConeType(session, finalType)
 
-        return functionCall.copy(
+        val res = functionCall.copy(
             resultType = resultType,
             typeArguments = newTypeParameters,
             calleeReference = FirResolvedCallableReferenceImpl(
@@ -126,6 +129,7 @@ class FirCallCompletionResultsWriterTransformer(
                 calleeReference.candidateSymbol
             )
         ).compose()
+        return res
 
     }
 
@@ -146,4 +150,68 @@ class FirCallCompletionResultsWriterTransformer(
         return super.transformAnonymousFunction(anonymousFunction, data)
     }
 
+    override fun transformBlock(block: FirBlock, data: Nothing?): CompositeTransformResult<FirStatement> {
+        val initialType = block.resultType.coneTypeSafe<ConeKotlinType>()
+        if (initialType != null) {
+            val finalType = finalSubstitutor.substituteOrNull(initialType)
+            val resultType = block.resultType.withReplacedConeType(session, finalType)
+            block.replaceTypeRef(resultType)
+        }
+        return super.transformBlock(block, data)
+    }
+
+    override fun transformWhenExpression(whenExpression: FirWhenExpression, data: Nothing?): CompositeTransformResult<FirStatement> {
+        val calleeReference = whenExpression.calleeReference as? FirNamedReferenceWithCandidate ?: return whenExpression.compose()
+
+        val whenExpression = whenExpression.transformChildren(this, data) as FirWhenExpression
+
+        val declaration = whenExpression.candidate()?.symbol?.fir as? FirMemberFunction<*> ?: return whenExpression.compose()
+
+        val subCandidate = calleeReference.candidate
+
+        val typeRef = typeCalculator.tryCalculateReturnType(declaration)
+
+        val initialType = subCandidate.substitutor.substituteOrNull(typeRef.type)
+        val finalType = finalSubstitutor.substituteOrNull(initialType)
+
+        val resultType = typeRef.withReplacedConeType(session, finalType)
+
+        return whenExpression.copy(
+            resultType = resultType,
+            calleeReference = FirResolvedCallableReferenceImpl(
+                calleeReference.session,
+                calleeReference.psi,
+                calleeReference.name,
+                calleeReference.candidateSymbol
+            )
+        ).compose()
+    }
+
+    override fun transformTryExpression(tryExpression: FirTryExpression, data: Nothing?): CompositeTransformResult<FirStatement> {
+        val calleeReference = tryExpression.calleeReference as? FirNamedReferenceWithCandidate ?: return tryExpression.compose()
+
+        val tryExpression = tryExpression.transformChildren(this, data) as FirTryExpression
+
+        val declaration = tryExpression.candidate()?.symbol?.fir as? FirMemberFunction<*> ?: return tryExpression.compose()
+
+        val subCandidate = calleeReference.candidate
+
+        val typeRef = typeCalculator.tryCalculateReturnType(declaration)
+
+        val initialType = subCandidate.substitutor.substituteOrNull(typeRef.type)
+        val finalType = finalSubstitutor.substituteOrNull(initialType)
+
+        val resultType = typeRef.withReplacedConeType(session, finalType)
+
+        return tryExpression.copy(
+            resultType = resultType,
+            calleeReference = FirResolvedCallableReferenceImpl(
+                calleeReference.session,
+                calleeReference.psi,
+                calleeReference.name,
+                calleeReference.candidateSymbol
+            )
+        ).compose()
+
+    }
 }

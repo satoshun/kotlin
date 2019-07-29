@@ -6,14 +6,15 @@
 package org.jetbrains.kotlin.fir.expressions
 
 import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.expressions.impl.FirUnknownTypeExpression
+import org.jetbrains.kotlin.fir.visitors.FirTransformer
 import org.jetbrains.kotlin.fir.visitors.FirVisitor
 
 abstract class FirTryExpression(
     session: FirSession,
     psi: PsiElement?
-) : FirUnknownTypeExpression(session, psi) {
+) : FirCallLikeControlFlowExpression(session, psi) {
     abstract val tryBlock: FirBlock
 
     abstract val catches: List<FirCatch>
@@ -29,4 +30,8 @@ abstract class FirTryExpression(
         finallyBlock?.accept(visitor, data)
         super.acceptChildren(visitor, data)
     }
+
+    abstract fun <D> transformTryBlock(transformer: FirTransformer<D>, data: D): FirElement
+    abstract fun <D> transformCatches(transformer: FirTransformer<D>, data: D): FirElement
+    abstract fun <D> transformFinallyBlock(transformer: FirTransformer<D>, data: D): FirElement
 }

@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirWhenBranch
+import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
 import org.jetbrains.kotlin.fir.transformSingle
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
 
@@ -22,8 +23,13 @@ class FirWhenBranchImpl(
     override var result: FirBlock
 ) : FirAbstractElement(session, psi), FirWhenBranch {
     override fun <D> transformChildren(transformer: FirTransformer<D>, data: D): FirElement {
-        condition = condition.transformSingle(transformer, data)
+        transformCondition(transformer, data)
         result = result.transformSingle(transformer, data)
+        return this
+    }
+
+    override fun <D> transformCondition(transformer: FirTransformer<D>, data: D): FirElement {
+        condition = condition.transformSingle(transformer, data)
         return this
     }
 }

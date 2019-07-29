@@ -9,10 +9,15 @@ import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.references.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.symbols.ConeSymbol
+import org.jetbrains.kotlin.fir.visitors.FirVisitor
 import org.jetbrains.kotlin.name.Name
 
-class FirNamedReferenceWithCandidate(session: FirSession, psi: PsiElement?, name: Name, val candidate: Candidate) :
-    FirSimpleNamedReference(session, psi, name) {
+class FirNamedReferenceWithCandidate(
+    session: FirSession,
+    psi: PsiElement?,
+    name: Name,
+    val candidate: Candidate
+) : FirSimpleNamedReference(session, psi, name) {
     override val candidateSymbol: ConeSymbol
         get() = candidate.symbol
 }

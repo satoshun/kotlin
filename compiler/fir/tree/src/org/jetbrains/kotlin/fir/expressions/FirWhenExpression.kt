@@ -6,14 +6,15 @@
 package org.jetbrains.kotlin.fir.expressions
 
 import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.expressions.impl.FirUnknownTypeExpression
+import org.jetbrains.kotlin.fir.visitors.FirTransformer
 import org.jetbrains.kotlin.fir.visitors.FirVisitor
 
 abstract class FirWhenExpression(
     session: FirSession,
     psi: PsiElement?
-) : FirUnknownTypeExpression(session, psi) {
+) : FirCallLikeControlFlowExpression(session, psi) {
     abstract val subject: FirExpression?
 
     // when (val subjectVariable = subject()) { ... }
@@ -31,4 +32,10 @@ abstract class FirWhenExpression(
         }
         super.acceptChildren(visitor, data)
     }
+
+    abstract fun <D> transformChildrenWithoutBodies(transformer: FirTransformer<D>, data: D): FirElement
+
+    abstract fun <D> transformBranches(transformer: FirTransformer<D>, data: D): FirElement
+
+    abstract fun <D> transformSubject(transformer: FirTransformer<D>, data: D): FirElement
 }

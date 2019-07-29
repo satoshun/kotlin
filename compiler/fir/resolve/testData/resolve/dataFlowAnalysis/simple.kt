@@ -1,19 +1,19 @@
-interface A {
-    val x: Int
-}
+interface S
 
-fun foo(a: A) {
-    val x = a.x + 1
-}
-//interface S
-//
-//interface Comparable<T>
-//
-//interface A : S, Comparable<A>
-//
-//interface B : S, Comparable<B>
-//
-//fun <K> select(x: K, y: K): K = null!!
+interface A : S
+
+interface B : S
+
+fun <R> materialize(): R = throw Exception()
+
+fun <K> select(x: K, y: K): K = throw Exception()
+
+//fun foo(vararg values: S) {}
+//fun test(a: A, b: B) = foo(a, b)
+
+//fun test(a: A, b: B) = if (true) a else b
+//fun test(a: A, b: B) = select(a, b)
+
 //
 ////fun foo(x: A<*>) = when (x) {
 ////    is B -> x.value
@@ -27,4 +27,40 @@ fun foo(a: A) {
 //
 //fun test_3(a: A, b: B) = select(a, b)
 //
-////fun test_4(a: A, b: B) = if (true) a else  b
+//fun test_4(a: A, b: B) = if (true) a else  b
+
+fun takeA(x: A) {}
+
+//fun test_2() {
+//    takeA(if (true) materialize() else materialize())
+//}
+
+//fun test_3() {
+//    takeA(select(materialize(), materialize()))
+//}
+
+//fun test_4() {
+//    takeA(select(if (true) materialize() else materialize(), materialize()))
+//}
+
+fun test_5() {
+    takeA(
+        try {
+            materialize()
+        } catch (e: Exception) {
+            materialize()
+        } finally {
+            materialize()
+        }
+    )
+}
+
+//fun <T> run(block: () -> T): T = block()
+
+//fun test() {
+//    takeA(
+//        run {
+//            materialize()
+//        }
+//    )
+//}

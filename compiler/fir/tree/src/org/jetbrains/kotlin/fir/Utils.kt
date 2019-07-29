@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.fir
 
 import org.jetbrains.kotlin.analyzer.ModuleInfo
+import org.jetbrains.kotlin.fir.visitors.CompositeTransformResult
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
 
 fun <T : FirElement, D> MutableList<T>.transformInplace(transformer: FirTransformer<D>, data: D) {
@@ -26,7 +27,27 @@ fun <T : FirElement, D> MutableList<T>.transformInplace(transformer: FirTransfor
                 iterator.add(resultIterator.next())
             }
         }
+    }
+}
 
+fun <T : FirElement> MutableList<T>.transformInplace(transformer: (T) -> CompositeTransformResult<T>) {
+    val iterator = this.listIterator()
+    while (iterator.hasNext()) {
+        val next = iterator.next()
+        val result = transformer.invoke(next)
+        if (result.isSingle) {
+            iterator.set(result.single)
+        } else {
+            val resultIterator = result.list.listIterator()
+            if (!resultIterator.hasNext()) {
+                iterator.remove()
+            } else {
+                iterator.set(resultIterator.next())
+            }
+            while (resultIterator.hasNext()) {
+                iterator.add(resultIterator.next())
+            }
+        }
     }
 }
 

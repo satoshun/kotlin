@@ -8,9 +8,11 @@ package org.jetbrains.kotlin.fir.resolve
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.declarations.*
+import org.jetbrains.kotlin.fir.expressions.FirCalleeReferenceHolder
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccess
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.references.FirErrorNamedReference
+import org.jetbrains.kotlin.fir.resolve.calls.Candidate
 import org.jetbrains.kotlin.fir.resolve.calls.FirNamedReferenceWithCandidate
 import org.jetbrains.kotlin.fir.resolve.transformers.resultType
 import org.jetbrains.kotlin.fir.scopes.impl.withReplacedConeType
@@ -166,17 +168,27 @@ fun FirFunction.constructFunctionalTypeRef(session: FirSession): FirResolvedType
         is FirAnonymousFunction -> receiverTypeRef
         else -> null
     }
-    val receiverType = receiverTypeRef?.coneTypeUnsafe<ConeKotlinType>()
     val parameters = valueParameters.map {
         it.returnTypeRef.coneTypeSafe<ConeKotlinType>() ?: ConeKotlinErrorType("No type for parameter")
     }
     val rawReturnType = (this as FirTypedDeclaration).returnTypeRef.coneTypeUnsafe<ConeKotlinType>()
+
+    val functionalType = createFunctionalType(session, parameters, receiverTypeRef?.coneTypeUnsafe(), rawReturnType)
+
+    return FirResolvedTypeRefImpl(session, psi, functionalType)
+}
+
+fun createFunctionalType(
+    session: FirSession,
+    parameters: List<ConeKotlinType>,
+    receiverType: ConeKotlinType?,
+    rawReturnType: ConeKotlinType
+): ConeLookupTagBasedType {
     val receiverAndParameterTypes = listOfNotNull(receiverType) + parameters + listOf(rawReturnType)
 
     val functionalTypeId = StandardClassIds.byName("Function${receiverAndParameterTypes.size - 1}")
     val functionalType = functionalTypeId(session.service()).constructType(receiverAndParameterTypes.toTypedArray(), isNullable = false)
-
-    return FirResolvedTypeRefImpl(session, psi, functionalType)
+    return functionalType
 }
 
 fun BodyResolveComponents.typeForQualifier(resolvedQualifier: FirResolvedQualifier): FirTypeRef {
@@ -213,10 +225,12 @@ fun BodyResolveComponents.typeForQualifier(resolvedQualifier: FirResolvedQualifi
     )
 }
 
-
-fun <T : FirQualifiedAccess> BodyResolveComponents.typeFromCallee(access: T): FirResolvedTypeRef {
+fun <T : FirCalleeReferenceHolder> BodyResolveComponents.typeFromCallee(access: T): FirResolvedTypeRef {
     val makeNullable: Boolean by lazy {
-        access.safe && access.explicitReceiver!!.resultType.coneTypeUnsafe<ConeKotlinType>().isNullable
+        if (access is FirQualifiedAccess)
+            access.safe && access.explicitReceiver!!.resultType.coneTypeUnsafe<ConeKotlinType>().isNullable
+        else
+            false
     }
 
     return when (val newCallee = access.calleeReference) {

@@ -44,3 +44,8 @@ interface ConeVariableSymbol : ConeCallableSymbol
 interface ConeFunctionSymbol : ConeCallableSymbol {
     val parameters: List<ConeKotlinType>
 }
+
+object SyntheticCallableId {
+    val WHEN = CallableId(FqName("_synthetic"), Name.identifier("WHEN_CALL"))
+    val TRY = CallableId(FqName("_synthetic"), Name.identifier("TRY_CALL"))
+}
