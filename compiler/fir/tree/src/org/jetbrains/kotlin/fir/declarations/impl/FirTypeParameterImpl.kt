@@ -29,8 +29,11 @@ class FirTypeParameterImpl(
         symbol.bind(this)
     }
 
-    // TODO: can we handle default bound in RawFirBuilder
-    override val bounds: MutableList<FirTypeRef> = mutableListOf(FirImplicitNullableAnyTypeRef(session, null))
+    /*
+     * Note that each type parameter have to has at least one upper bound (Any? if there is no other bounds)
+     *   so if you create FirTypeParameterImpl you need to guarantee this contract
+     */
+    override val bounds: MutableList<FirTypeRef> = mutableListOf()
 
     override fun <D> transformChildren(transformer: FirTransformer<D>, data: D): FirElement {
         bounds.transformInplace(transformer, data)
