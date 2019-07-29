@@ -48,7 +48,7 @@ fun ConeClassLikeLookupTag.toSymbol(useSiteSession: FirSession): ConeClassifierS
 fun ConeAbbreviatedType.directExpansionType(useSiteSession: FirSession): ConeClassLikeType? =
     abbreviationLookupTag
         .toSymbol(useSiteSession)
-        ?.safeAs<FirTypeAliasSymbol>()?.fir?.expandedConeType
+        ?.safeAs<FirTypeAliasSymbol>()?.fir?.expandedConeType?.withArguments(this.typeArguments)
 
 fun ConeClassifierLookupTag.toSymbol(useSiteSession: FirSession): ConeClassifierSymbol? =
     when (this) {
@@ -143,7 +143,7 @@ fun <T : ConeKotlinType> T.withNullability(nullability: ConeNullability): T {
 }
 
 
-fun <T : ConeKotlinType> T.withArguments(arguments: Array<ConeKotlinTypeProjection>): T {
+fun <T : ConeKotlinType> T.withArguments(arguments: Array<out ConeKotlinTypeProjection>): T {
     if (this.typeArguments === arguments) {
         return this
     }
