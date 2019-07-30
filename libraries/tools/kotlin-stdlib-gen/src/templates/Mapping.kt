@@ -31,7 +31,10 @@ object Mapping : TemplateGroupBase() {
         include(CharSequences, ArraysOfUnsigned)
     } builder {
         doc {
-            "Returns a ${if (f == Sequences) f.mapResult else "lazy [Iterable]"} of [IndexedValue] for each ${f.element} of the original ${f.collection}."
+            """
+            Returns a ${if (f == Sequences) f.mapResult else "lazy [Iterable]"} that wraps each ${f.element} of the original ${f.collection}
+            into an [IndexedValue] containing an index of that element and the element itself.
+            """
         }
         returns("Iterable<IndexedValue<T>>")
         body {
