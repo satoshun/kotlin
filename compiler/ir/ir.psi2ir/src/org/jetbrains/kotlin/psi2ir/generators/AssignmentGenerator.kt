@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrDynamicOperatorExpressionImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.util.referenceFunction
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
@@ -297,7 +298,6 @@ class AssignmentGenerator(statementGenerator: StatementGenerator) : StatementGen
 
                 val superQualifier = getSuperQualifier(resolvedCall)
 
-                // TODO property imported from an object
                 createPropertyLValue(ktLeft, descriptor, propertyReceiver, getTypeArguments(resolvedCall), origin, superQualifier)
             }
         }
@@ -336,9 +336,10 @@ class AssignmentGenerator(statementGenerator: StatementGenerator) : StatementGen
                 scope,
                 ktExpression.startOffsetSkippingComments, ktExpression.endOffset, origin,
                 propertyIrType,
-                getterSymbol,
+                unwrappedPropertyDescriptor,
+                getterSymbol as IrSimpleFunctionSymbol?,
                 getterDescriptor,
-                setterSymbol,
+                setterSymbol as IrSimpleFunctionSymbol?,
                 setterDescriptor,
                 typeArgumentsList,
                 propertyReceiver,

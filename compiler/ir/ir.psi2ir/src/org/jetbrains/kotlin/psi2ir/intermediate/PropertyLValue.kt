@@ -17,6 +17,8 @@
 package org.jetbrains.kotlin.psi2ir.intermediate
 
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
+import org.jetbrains.kotlin.descriptors.PropertyDescriptor
+import org.jetbrains.kotlin.descriptors.SyntheticPropertyDescriptor
 import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -25,7 +27,7 @@ import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
-import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 
 abstract class PropertyLValueBase(
@@ -123,11 +125,12 @@ class AccessorPropertyLValue(
     endOffset: Int,
     origin: IrStatementOrigin?,
     type: IrType,
-    val getter: IrFunctionSymbol?,
-    val getterDescriptor: FunctionDescriptor?,
-    val setter: IrFunctionSymbol?,
-    val setterDescriptor: FunctionDescriptor?,
-    val typeArguments: List<IrType>?,
+    private val propertyDescriptor: PropertyDescriptor,
+    private val getter: IrSimpleFunctionSymbol?,
+    private val getterDescriptor: FunctionDescriptor?,
+    private val setter: IrSimpleFunctionSymbol?,
+    private val setterDescriptor: FunctionDescriptor?,
+    private val typeArguments: List<IrType>?,
     callReceiver: CallReceiver,
     superQualifier: IrClassSymbol?
 ) : PropertyLValueBase(context, scope, startOffset, endOffset, origin, type, callReceiver, superQualifier) {
@@ -142,15 +145,26 @@ class AccessorPropertyLValue(
 
     override fun load(): IrExpression =
         callReceiver.adjustForCallee(getterDescriptor!!).call { dispatchReceiverValue, extensionReceiverValue ->
-            IrCallImpl(
-                startOffset, endOffset,
-                type,
-                getter!!, getterDescriptor,
-                typeArgumentsCount,
-                0,
-                origin,
-                superQualifier
-            ).apply {
+            val irGetterCall =
+                if (propertyDescriptor is SyntheticPropertyDescriptor)
+                    IrCallImpl(
+                        startOffset, endOffset,
+                        type,
+                        getter!!, getterDescriptor,
+                        typeArgumentsCount, 0,
+                        origin,
+                        superQualifier
+                    )
+                else
+                    IrGetPropertyImpl(
+                        startOffset, endOffset,
+                        type,
+                        getter!!, getterDescriptor,
+                        typeArgumentsCount,
+                        origin,
+                        superQualifier
+                    )
+            irGetterCall.apply {
                 putTypeArguments()
                 dispatchReceiver = dispatchReceiverValue?.load()
                 extensionReceiver = extensionReceiverValue?.load()
@@ -159,15 +173,26 @@ class AccessorPropertyLValue(
 
     override fun store(irExpression: IrExpression) =
         callReceiver.adjustForCallee(setterDescriptor!!).call { dispatchReceiverValue, extensionReceiverValue ->
-            IrCallImpl(
-                startOffset, endOffset,
-                context.irBuiltIns.unitType,
-                setter!!, setterDescriptor,
-                typeArgumentsCount,
-                1,
-                origin,
-                superQualifier
-            ).apply {
+            val irSetterCall =
+                if (propertyDescriptor is SyntheticPropertyDescriptor)
+                    IrCallImpl(
+                        startOffset, endOffset,
+                        context.irBuiltIns.unitType,
+                        setter!!, setterDescriptor,
+                        typeArgumentsCount, 1,
+                        origin,
+                        superQualifier
+                    )
+                else
+                    IrSetPropertyImpl(
+                        startOffset, endOffset,
+                        context.irBuiltIns.unitType,
+                        setter!!, setterDescriptor,
+                        typeArgumentsCount,
+                        origin,
+                        superQualifier
+                    )
+            irSetterCall.apply {
                 putTypeArguments()
                 dispatchReceiver = dispatchReceiverValue?.load()
                 extensionReceiver = extensionReceiverValue?.load()
@@ -179,7 +204,7 @@ class AccessorPropertyLValue(
         AccessorPropertyLValue(
             context, scope,
             startOffset, endOffset, origin,
-            type, getter, getterDescriptor, setter, setterDescriptor,
+            type, propertyDescriptor, getter, getterDescriptor, setter, setterDescriptor,
             typeArguments,
             SimpleCallReceiver(dispatchReceiver, extensionReceiver),
             superQualifier
