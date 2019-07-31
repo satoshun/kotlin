@@ -18,7 +18,7 @@ public inline operator fun <T> Iterator<T>.iterator(): Iterator<T> = this
 
 /**
  * Returns an [Iterator] that wraps each element produced by the original iterator
- * into an [IndexedValue] containing an index of that element and the element itself.
+ * into an [IndexedValue] containing the index of that element and the element itself.
  *
  * @sample samples.collections.Iterators.withIndexIterator
  */
