@@ -4232,7 +4232,7 @@ public inline fun <R, C : MutableCollection<in R>> UShortArray.mapTo(destination
 
 /**
  * Returns a lazy [Iterable] that wraps each element of the original array
- * into an [IndexedValue] containing an index of that element and the element itself.
+ * into an [IndexedValue] containing the index of that element and the element itself.
  */
 @SinceKotlin("1.3")
 @ExperimentalUnsignedTypes
@@ -4242,7 +4242,7 @@ public fun UIntArray.withIndex(): Iterable<IndexedValue<UInt>> {
 
 /**
  * Returns a lazy [Iterable] that wraps each element of the original array
- * into an [IndexedValue] containing an index of that element and the element itself.
+ * into an [IndexedValue] containing the index of that element and the element itself.
  */
 @SinceKotlin("1.3")
 @ExperimentalUnsignedTypes
@@ -4252,7 +4252,7 @@ public fun ULongArray.withIndex(): Iterable<IndexedValue<ULong>> {
 
 /**
  * Returns a lazy [Iterable] that wraps each element of the original array
- * into an [IndexedValue] containing an index of that element and the element itself.
+ * into an [IndexedValue] containing the index of that element and the element itself.
  */
 @SinceKotlin("1.3")
 @ExperimentalUnsignedTypes
@@ -4262,7 +4262,7 @@ public fun UByteArray.withIndex(): Iterable<IndexedValue<UByte>> {
 
 /**
  * Returns a lazy [Iterable] that wraps each element of the original array
- * into an [IndexedValue] containing an index of that element and the element itself.
+ * into an [IndexedValue] containing the index of that element and the element itself.
  */
 @SinceKotlin("1.3")
 @ExperimentalUnsignedTypes

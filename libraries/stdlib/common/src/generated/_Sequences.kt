@@ -948,7 +948,7 @@ public inline fun <T, R, C : MutableCollection<in R>> Sequence<T>.mapTo(destinat
 
 /**
  * Returns a sequence that wraps each element of the original sequence
- * into an [IndexedValue] containing an index of that element and the element itself.
+ * into an [IndexedValue] containing the index of that element and the element itself.
  *
  * The operation is _intermediate_ and _stateless_.
  */

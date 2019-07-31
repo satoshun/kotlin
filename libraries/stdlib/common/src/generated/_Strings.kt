@@ -908,7 +908,7 @@ public inline fun <R, C : MutableCollection<in R>> CharSequence.mapTo(destinatio
 
 /**
  * Returns a lazy [Iterable] that wraps each character of the original char sequence
- * into an [IndexedValue] containing an index of that element and the element itself.
+ * into an [IndexedValue] containing the index of that character and the character itself.
  */
 public fun CharSequence.withIndex(): Iterable<IndexedValue<Char>> {
     return IndexingIterable { iterator() }

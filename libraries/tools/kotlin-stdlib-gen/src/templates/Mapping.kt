@@ -33,7 +33,7 @@ object Mapping : TemplateGroupBase() {
         doc {
             """
             Returns a ${if (f == Sequences) f.mapResult else "lazy [Iterable]"} that wraps each ${f.element} of the original ${f.collection}
-            into an [IndexedValue] containing an index of that element and the element itself.
+            into an [IndexedValue] containing the index of that ${f.element} and the ${f.element} itself.
             """
         }
         returns("Iterable<IndexedValue<T>>")
