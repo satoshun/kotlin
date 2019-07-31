@@ -8,28 +8,17 @@ package org.jetbrains.kotlin.idea.actions.internal.refactoringTesting
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.refactoring.listeners.RefactoringEventData
+import com.intellij.refactoring.listeners.RefactoringEventListener
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.kotlin.psi.KtClass
 import kotlin.random.Random
 
 internal fun <T> List<T>.randomElement(): T = this[Random.nextInt(0, this.size)]
 
-internal fun <T> List<T>.randomElementOrNull(): T? = if (isNotEmpty()) this[Random.nextInt(0, this.size)] else null
+internal fun <T : Any> List<T>.randomElementOrNull(): T? = if (isNotEmpty()) randomElement() else null
 
-
-
-private class RandomSequence<T>(private val list: List<T>) : Sequence<T> {
-
-    private class RandomIterator<T>(private val list: List<T>) : Iterator<T> {
-        override fun hasNext() = list.isNotEmpty()
-
-        override fun next(): T = list.randomElement()
-    }
-
-    override fun iterator(): Iterator<T> = RandomIterator(list)
-}
-
-internal fun <T> List<T>.toRandomSequence(): Sequence<T> = RandomSequence(this)
+internal fun <T : Any> List<T>.toRandomSequence(): Sequence<T> = generateSequence { randomElementOrNull() }
 
 internal fun <T> List<T>.randomElements(count: Int): List<T> =
     mutableListOf<T>().also { list -> repeat(count) { list.add(randomElement()) } }
@@ -43,11 +32,8 @@ internal fun getRandomFileClassElements(project: Project, ktFiles: List<VirtualF
 
 internal sealed class RandomMoveRefactoringResult {
     internal class Success(val caseData: String) : RandomMoveRefactoringResult()
-    internal class Failed private constructor() : RandomMoveRefactoringResult() {
-        companion object {
-            val Instance: Failed = Failed()
-        }
-    }
+    internal class ExceptionCaused(val caseData: String, val message: String) : RandomMoveRefactoringResult()
+    internal companion object Failed : RandomMoveRefactoringResult()
 }
 
 internal interface RandomMoveRefactoringCase {

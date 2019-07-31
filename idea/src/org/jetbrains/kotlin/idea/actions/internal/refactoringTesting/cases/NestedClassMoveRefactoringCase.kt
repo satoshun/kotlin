@@ -5,68 +5,55 @@
 
 package org.jetbrains.kotlin.idea.actions.internal.refactoringTesting.cases;
 
+import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
-import com.intellij.psi.search.FileTypeIndex
-import com.intellij.psi.search.ProjectScope
 import com.intellij.psi.util.PsiTreeUtil
-import org.jetbrains.kotlin.idea.KotlinFileType
-import org.jetbrains.kotlin.idea.actions.internal.refactoringTesting.*
+import org.jetbrains.kotlin.idea.actions.internal.refactoringTesting.RandomMoveRefactoringCase
+import org.jetbrains.kotlin.idea.actions.internal.refactoringTesting.RandomMoveRefactoringResult
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
-import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.*
-import org.jetbrains.kotlin.idea.stubindex.KotlinSourceFilterScope
-import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.MoveKotlinDeclarationsHandler
+import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.RefactoringConflictsFoundException
+import org.jetbrains.kotlin.psi.KtClass
 
 internal class NestedClassMoveRefactoringCase : RandomMoveRefactoringCase {
 
-    private fun KtDeclaration.isSourceCompatible() = this is KtClass && this !is KtEnumEntry && this.parent is KtClassBody
-
-    private fun KtDeclaration.isTargetCompatible() = this is KtClass && this !is KtEnumEntry
-
     override fun tryCreateAndRun(project: Project): RandomMoveRefactoringResult {
 
-        val scope = KotlinSourceFilterScope.projectSources(ProjectScope.getContentScope(project), project)
-        val ktFiles = FileTypeIndex.getFiles(KotlinFileType.INSTANCE, scope).toList()
+        val projectFiles = project.files()
 
-        val klassElements = ktFiles
-            .toRandomSequence()
-            .flatMap { PsiTreeUtil.collectElementsOfType(it.toPsiFile(project), KtClass::class.java).toList().toRandomSequence() }
-            .take(1000)
+        if (projectFiles.isEmpty()) RandomMoveRefactoringResult.Failed
 
-        var targetElement: KtNamedDeclaration
-        var sourceElement: KtNamedDeclaration
+        fun getRandomKotlinClassOrNull(): KtClass? {
+            val classes = PsiTreeUtil.collectElementsOfType(projectFiles.random().toPsiFile(project), KtClass::class.java)
+            return if (classes.isNotEmpty()) return classes.random() else null
+        }
 
-        val handler by lazy { MoveKotlinDeclarationsHandler() }
+        val targetClass = if (randomBoolean()) {
+            return RandomMoveRefactoringResult.Failed
+        } else null
+        val sourceClass = getRandomKotlinClassOrNull() ?: return RandomMoveRefactoringResult.Failed
+        val sourceClassAsArray = arrayOf(sourceClass)
 
-        while (true) {
-            targetElement = klassElements
-                .firstOrNull { it.isTargetCompatible() }
-                ?: return RandomMoveRefactoringResult.Failed.Instance
-            sourceElement = klassElements
-                .firstOrNull { it !== targetElement && it.isSourceCompatible() }
-                ?: return RandomMoveRefactoringResult.Failed.Instance
+        val testDataKeeper = TestDataKeeper("no data")
 
-            val sourceAsArray = arrayOf(sourceElement)
-            if (handler.isValidTarget(targetElement, sourceAsArray) && handler.canMove(sourceAsArray, targetElement)) {
-                break
+        val handler = MoveKotlinDeclarationsHandler(MoveKotlinDeclarationsHandlerTestActions(testDataKeeper))
+
+        if (!handler.canMove(sourceClassAsArray, targetClass)) {
+            return RandomMoveRefactoringResult.Failed
+        }
+
+        try {
+            handler.doMove(project, sourceClassAsArray, targetClass, null)
+        } catch (e: Throwable) {
+            return when (e) {
+                is NotImplementedError -> RandomMoveRefactoringResult.Failed
+                is FailedToRunCaseException -> RandomMoveRefactoringResult.Failed
+                is RefactoringConflictsFoundException -> RandomMoveRefactoringResult.Failed
+                is ConfigurationException -> RandomMoveRefactoringResult.Failed
+                else -> RandomMoveRefactoringResult.ExceptionCaused(testDataKeeper.caseData, "${e.javaClass.typeName}: ${e.message ?: "No message"}")
             }
         }
 
-        val targetMoveElement = KotlinMoveTargetForExistingElement(targetElement as KtClassOrObject)
-        val delegate = MoveDeclarationsDelegate.NestedClass()
-        val descriptor = MoveDeclarationsDescriptor(
-            project,
-            MoveSource(sourceElement),
-            targetMoveElement,
-            delegate,
-            searchInCommentsAndStrings = false,
-            searchInNonCode = false,
-            deleteSourceFiles = false,
-            moveCallback = null,
-            openInEditor = false
-        )
-
-        MoveKotlinDeclarationsProcessor(descriptor, Mover.Default).run()
-
-        return RandomMoveRefactoringResult.Success("Source: ${sourceElement.name}\nTarget: ${targetElement.name}")
+        return RandomMoveRefactoringResult.Success(testDataKeeper.caseData)
     }
 }
