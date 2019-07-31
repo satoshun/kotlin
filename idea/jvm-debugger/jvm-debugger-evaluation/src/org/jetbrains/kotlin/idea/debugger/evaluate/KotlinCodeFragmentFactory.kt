@@ -113,13 +113,21 @@ class KotlinCodeFragmentFactory : CodeFragmentFactory() {
 
                 val fakeFunctionText = buildString {
                     append("fun ")
-                    frameInfo.thisObject?.asProperty()?.text?.let { append(it).append('.') }
+
+                    val thisType = frameInfo.thisObject?.asProperty()?.typeReference?.typeElement?.unwrapNullableType()
+                    if (thisType != null) {
+                        append(thisType.text).append('.')
+                    }
+
                     append(FAKE_JAVA_CONTEXT_FUNCTION_NAME).append("() {\n")
 
                     for (variable in frameInfo.variables) {
                         val text = variable.asProperty()?.text ?: continue
                         append("    ").append(text).append("\n")
                     }
+
+                    // There should be at least one declaration inside the function (or 'fakeContext' below won't work).
+                    append("    val _debug_context_val = 1\n")
 
                     append("}")
                 }
@@ -133,6 +141,10 @@ class KotlinCodeFragmentFactory : CodeFragmentFactory() {
         }
 
         return codeFragment
+    }
+
+    private fun KtTypeElement.unwrapNullableType(): KtTypeElement {
+        return if (this is KtNullableType) innerType ?: this else this
     }
 
     private fun supplyDebugInformation(item: TextWithImports, codeFragment: KtCodeFragment, context: PsiElement?) {
