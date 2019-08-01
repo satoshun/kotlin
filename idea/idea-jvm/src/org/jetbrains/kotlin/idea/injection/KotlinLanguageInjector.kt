@@ -53,10 +53,11 @@ import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 class KotlinLanguageInjector(
-    private val configuration: Configuration,
-    private val project: Project,
-    private val temporaryPlacesRegistry: TemporaryPlacesRegistry
+    private val project: Project
 ) : MultiHostInjector {
+    private val temporaryPlacesRegistry = TemporaryPlacesRegistry.getInstance(project)
+    private val configuration = Configuration.getProjectInstance(project)
+
     companion object {
         private val STRING_LITERALS_REGEXP = "\"([^\"]*)\"".toRegex()
         private val ABSENT_KOTLIN_INJECTION = BaseInjection("ABSENT_KOTLIN_BASE_INJECTION")
