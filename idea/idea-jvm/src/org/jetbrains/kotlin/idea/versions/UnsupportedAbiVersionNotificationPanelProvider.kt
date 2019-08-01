@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2018 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Copyright 2010-2019 JetBrains s.r.o. and Kotlin Programming Language contributors.
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
@@ -81,15 +81,17 @@ class UnsupportedAbiVersionNotificationPanelProvider(private val project: Projec
         val isPluginOldForAllRoots = badVersionedRoots.all { it.supportedVersion < it.version }
         val isPluginNewForAllRoots = badVersionedRoots.all { it.supportedVersion > it.version }
 
-        if (!badRuntimeLibraries.isEmpty()) {
+        if (badRuntimeLibraries.isNotEmpty()) {
             val badRootsInRuntimeLibraries = findBadRootsInRuntimeLibraries(badRuntimeLibraries, badVersionedRoots)
             val otherBadRootsCount = badVersionedRoots.size - badRootsInRuntimeLibraries.size
 
-            val text = MessageFormat.format("<html><b>{0,choice,0#|1#|1<Some }Kotlin runtime librar{0,choice,0#|1#y|1<ies}</b>" +
-                                            "{1,choice,0#|1# and one other jar|1< and {1} other jars} " +
-                                            "{1,choice,0#has|0<have} an unsupported binary format.</html>",
-                                            badRuntimeLibraries.size,
-                                            otherBadRootsCount)
+            val text = MessageFormat.format(
+                "<html><b>{0,choice,0#|1#|1<Some }Kotlin runtime librar{0,choice,0#|1#y|1<ies}</b>" +
+                        "{1,choice,0#|1# and one other jar|1< and {1} other jars} " +
+                        "{1,choice,0#has|0<have} an unsupported binary format.</html>",
+                badRuntimeLibraries.size,
+                otherBadRootsCount
+            )
 
             answer.setText(text)
 
@@ -106,14 +108,16 @@ class UnsupportedAbiVersionNotificationPanelProvider(private val project: Projec
                 else -> "Replace"
             }
 
-            val actionLabelText = MessageFormat.format("$updateAction {0,choice,0#|1#|1<all }Kotlin runtime librar{0,choice,0#|1#y|1<ies} ", badRuntimeLibraries.size)
+            val actionLabelText = MessageFormat.format(
+                "$updateAction {0,choice,0#|1#|1<all }Kotlin runtime librar{0,choice,0#|1#y|1<ies} ",
+                badRuntimeLibraries.size
+            )
             answer.createActionLabel(actionLabelText) {
                 ApplicationManager.getApplication().invokeLater {
                     updateLibraries(project, badRuntimeLibraries)
                 }
             }
-        }
-        else if (badVersionedRoots.size == 1) {
+        } else if (badVersionedRoots.size == 1) {
             val badVersionedRoot = badVersionedRoots.first()
             val presentableName = badVersionedRoot.file.presentableName
 
@@ -131,19 +135,22 @@ class UnsupportedAbiVersionNotificationPanelProvider(private val project: Projec
                 }
             }
 
-            answer.createActionLabel("Go to " + presentableName) { navigateToLibraryRoot(project, badVersionedRoot.file) }
-        }
-        else {
+            answer.createActionLabel("Go to $presentableName") { navigateToLibraryRoot(project, badVersionedRoot.file) }
+        } else {
             when {
                 isPluginOldForAllRoots -> {
-                    answer.setText("Some Kotlin libraries attached to this project were compiled with a newer Kotlin compiler and can't be read. " +
-                                   "Please update Kotlin plugin.")
+                    answer.setText(
+                        "Some Kotlin libraries attached to this project were compiled with a newer Kotlin compiler and can't be read. " +
+                                "Please update Kotlin plugin."
+                    )
                     createUpdatePluginLink(answer)
                 }
 
                 isPluginNewForAllRoots ->
-                    answer.setText("Some Kotlin libraries attached to this project have outdated binary format and can't be read by current plugin. " +
-                                   "Please update found libraries.")
+                    answer.setText(
+                        "Some Kotlin libraries attached to this project have outdated binary format and can't be read by current plugin. " +
+                                "Please update found libraries."
+                    )
 
                 else ->
                     answer.setText("Some Kotlin libraries attached to this project have unsupported binary format. Please update the libraries or the plugin.")
@@ -157,16 +164,21 @@ class UnsupportedAbiVersionNotificationPanelProvider(private val project: Projec
 
     private fun createShowPathsActionLabel(module: Module, answer: EditorNotificationPanel, labelText: String) {
         answer.createComponentActionLabel(labelText) { label ->
-            DumbService.getInstance(project).tryRunReadActionInSmartMode({
+            val task = {
                 val badRoots = collectBadRoots(module)
                 assert(!badRoots.isEmpty()) { "This action should only be called when bad roots are present" }
 
-                val listPopupModel = LibraryRootsPopupModel("Unsupported format, plugin version: " + KotlinPluginUtil.getPluginVersion(), project, badRoots)
+                val listPopupModel = LibraryRootsPopupModel(
+                    "Unsupported format, plugin version: " + KotlinPluginUtil.getPluginVersion(),
+                    project,
+                    badRoots
+                )
                 val popup = JBPopupFactory.getInstance().createListPopup(listPopupModel)
                 popup.showUnderneathOf(label)
 
                 null
-            }, "Can't show all paths during index update")
+            }
+            DumbService.getInstance(project).tryRunReadActionInSmartMode(task, "Can't show all paths during index update")
         }
     }
 
@@ -207,11 +219,9 @@ class UnsupportedAbiVersionNotificationPanelProvider(private val project: Projec
             val module = ModuleUtilCore.findModuleForFile(file, project) ?: return null
 
             return checkAndCreate(module)
-        }
-        catch (e: ProcessCanceledException) {
+        } catch (e: ProcessCanceledException) {
             // Ignore
-        }
-        catch (e: IndexNotReadyException) {
+        } catch (e: IndexNotReadyException) {
             DumbService.getInstance(project).runWhenSmart(updateNotifications)
         }
 
@@ -233,8 +243,9 @@ class UnsupportedAbiVersionNotificationPanelProvider(private val project: Projec
     }
 
     private fun findBadRootsInRuntimeLibraries(
-            badRuntimeLibraries: List<Library>,
-            badVersionedRoots: Collection<BinaryVersionedFile<BinaryVersion>>): ArrayList<BinaryVersionedFile<BinaryVersion>> {
+        badRuntimeLibraries: List<Library>,
+        badVersionedRoots: Collection<BinaryVersionedFile<BinaryVersion>>
+    ): ArrayList<BinaryVersionedFile<BinaryVersion>> {
         val badRootsInLibraries = ArrayList<BinaryVersionedFile<BinaryVersion>>()
 
         fun addToBadRoots(file: VirtualFile?) {
@@ -256,9 +267,9 @@ class UnsupportedAbiVersionNotificationPanelProvider(private val project: Projec
     }
 
     private class LibraryRootsPopupModel(
-            title: String,
-            private val project: Project,
-            roots: Collection<BinaryVersionedFile<BinaryVersion>>
+        title: String,
+        private val project: Project,
+        roots: Collection<BinaryVersionedFile<BinaryVersion>>
     ) : BaseListPopupStep<BinaryVersionedFile<BinaryVersion>>(title, *roots.toTypedArray()) {
 
         override fun getTextFor(root: BinaryVersionedFile<BinaryVersion>): String {
@@ -290,7 +301,7 @@ class UnsupportedAbiVersionNotificationPanelProvider(private val project: Projec
             val label = JLabel(text)
             myLinksPanel.add(label)
 
-            val successLink = createActionLabel(successLinkText, {  })
+            val successLink = createActionLabel(successLinkText) { }
             successLink.isVisible = false
 
             // Several notification panels can be created almost instantly but we want to postpone deferred checks until
